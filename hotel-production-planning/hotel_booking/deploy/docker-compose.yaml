@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hotel_postgres
+    environment:
+      POSTGRES_DB: hotel_db
+      POSTGRES_USER: hotel_user
+      POSTGRES_PASSWORD: hotel_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - hotel_pgdata:/var/lib/postgresql/data
+      - ../migrations/postgres:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - hotel_network
+
+  hotel-api:
+    container_name: hotel_api
+    build:
+      context: ../
+      dockerfile: ./deploy/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hotel_db
+      - SPRING_DATASOURCE_USERNAME=hotel_user
+      - SPRING_DATASOURCE_PASSWORD=hotel_pass
+      - JAVA_OPTS=-Xmx512m -Xms512m
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../src/main/resources/static/images:/app/static/images
+    networks:
+      - hotel_network
+    depends_on:
+      - postgres
+  
+  adminer:
+    image: adminer
+    restart: always
+    container_name: hotel_adminer
+    ports:
+      - "8085:8080"
+    networks:
+      - hotel_network
+    depends_on:
+      - postgres
+
+volumes:
+  hotel_pgdata:
+    driver: local
+
+networks:
+  hotel_network:
